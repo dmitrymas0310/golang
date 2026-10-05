@@ -1,24 +1,32 @@
 package main
 
-import "fmt"
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
 
 func main() {
 	fmt.Println("Ledger service started")
 
-	budget := Budget{
-		Category: "Food",
-		Limit:    1000.0,
-		Period:   "2026-10",
+	file, err := os.Open("budgets.json")
+	if err != nil {
+		fmt.Println("Error opening budgets file:", err)
+		return
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	if err := LoadBudgets(reader); err != nil {
+		fmt.Println("Error loading budgets:", err)
+		return
 	}
 
-	fmt.Println(budget.Category)
-	fmt.Println(budget.Limit)
-	fmt.Println(budget.Period)
-	fmt.Println(budgets["Food"])
+	fmt.Println("Loaded budgets:", budgets)
 
 	trans_1 := Transaction{
 		ID:          1,
-		Amount:      50.0,
+		Amount:      1050.0,
 		Category:    "Food",
 		Description: "Groceries",
 		Date:        "2026-10",
@@ -34,8 +42,8 @@ func main() {
 
 	trans_3 := Transaction{
 		ID:          3,
-		Amount:      75.0,
-		Category:    "Transport",
+		Amount:      1075.0,
+		Category:    "Restaurant",
 		Description: "Cinema",
 		Date:        "2026-10",
 	}
@@ -51,5 +59,4 @@ func main() {
 	}
 
 	fmt.Println(ListTransactions())
-
 }

@@ -1,0 +1,17 @@
+[
+  {
+    "Category": "Food",
+    "Limit": 2000,
+    "Period": "2026-10"
+  },
+  {
+    "Category": "Transport",
+    "Limit": 500,
+    "Period": "2026-10"
+  },
+  {
+    "Category": "Restaurant",
+    "Limit": 1000,
+    "Period": "2026-10"
+  }
+]

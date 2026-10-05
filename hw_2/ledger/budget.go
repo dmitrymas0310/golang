@@ -1,20 +1,34 @@
 package main
 
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+)
+
 type Budget struct {
 	Category string
 	Limit    float64
 	Period   string
 }
 
-var budgets = map[string]Budget{
-	"Food": Budget{
-		Category: "Food",
-		Limit:    1000.0,
-		Period:   "2026-10",
-	},
-	"Transport": Budget{
-		Category: "Transport",
-		Limit:    500.0,
-		Period:   "2026-10",
-	},
+var budgets = make(map[string]Budget)
+
+func SetBudget(budget Budget) {
+	budgets[budget.Category] = budget
+}
+
+func LoadBudgets(r io.Reader) error {
+	var loadedBudgets []Budget
+
+	decoder := json.NewDecoder(r)
+	if err := decoder.Decode(&loadedBudgets); err != nil {
+		return fmt.Errorf("failed to read or parse budgets: %w", err)
+	}
+
+	for _, budget := range loadedBudgets {
+		SetBudget(budget)
+	}
+
+	return nil
 }
