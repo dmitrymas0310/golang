@@ -1,32 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+
+	"gateway/internal/api"
 )
 
-func pingHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-
-	if _, err := fmt.Fprint(w, "pong"); err != nil {
-		log.Printf("failed to write response: %v", err)
-	}
-}
-
 func main() {
-	http.HandleFunc("/ping", pingHandler)
+	mux := http.NewServeMux()
+	api.RegisterRoutes(mux)
 
 	addr := ":8080"
 
 	log.Printf("Gateway server started on http://localhost%s", addr)
 
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	handler := api.LoggingMiddleware(api.JSONMiddleware(mux))
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
 }

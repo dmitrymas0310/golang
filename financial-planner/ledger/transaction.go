@@ -1,8 +1,9 @@
-package main
+package ledger
 
 import (
 	"errors"
 	"strings"
+	"sync"
 )
 
 type Transaction struct {
@@ -14,6 +15,11 @@ type Transaction struct {
 }
 
 var transactions = make([]Transaction, 0)
+
+// stateMu защищает транзакции и бюджеты, включая проверку лимита при добавлении.
+var stateMu sync.RWMutex
+
+var ErrBudgetExceeded = errors.New("transaction amount exceeds budget limit")
 
 func (tx Transaction) Validate() error {
 	if tx.Amount <= 0 {
@@ -36,6 +42,9 @@ func AddTransaction(tx Transaction) error {
 		return err
 	}
 
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	budget, exists := budgets[tx.Category]
 
 	if exists {
@@ -47,7 +56,7 @@ func AddTransaction(tx Transaction) error {
 			}
 		}
 		if currentTotal+tx.Amount > budget.Limit {
-			return errors.New("transaction amount exceeds budget limit")
+			return ErrBudgetExceeded
 		}
 	}
 
@@ -56,5 +65,10 @@ func AddTransaction(tx Transaction) error {
 }
 
 func ListTransactions() []Transaction {
-	return transactions
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+
+	result := make([]Transaction, len(transactions))
+	copy(result, transactions)
+	return result
 }

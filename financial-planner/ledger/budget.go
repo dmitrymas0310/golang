@@ -1,4 +1,4 @@
-package main
+package ledger
 
 import (
 	"encoding/json"
@@ -33,8 +33,22 @@ func SetBudget(budget Budget) error {
 		return err
 	}
 
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	budgets[budget.Category] = budget
 	return nil
+}
+
+func ListBudgets() []Budget {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+
+	result := make([]Budget, 0, len(budgets))
+	for _, budget := range budgets {
+		result = append(result, budget)
+	}
+	return result
 }
 
 func LoadBudgets(r io.Reader) error {
