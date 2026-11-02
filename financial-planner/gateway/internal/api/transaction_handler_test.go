@@ -26,20 +26,20 @@ func testCreateTransaction(t *testing.T) {
 		{"malformed JSON", `{`, 400, `{"error":"invalid JSON body"}`},
 		{"empty body", ``, 400, `{"error":"invalid JSON body"}`},
 		{"wrong amount type", `{"amount":"10"}`, 400, `{"error":"invalid JSON body"}`},
-		{"invalid amount", `{"amount":0,"category":"Food","date":"2026-10"}`, 400, `{"error":"transaction amount must be greater than zero"}`},
-		{"empty category", `{"amount":10,"category":" ","date":"2026-10"}`, 400, `{"error":"transaction category must not be empty"}`},
+		{"invalid amount", `{"amount":0,"category":"Food","date":"2026-10-01"}`, 400, `{"error":"transaction amount must be greater than zero"}`},
+		{"empty category", `{"amount":10,"category":" ","date":"2026-10-01"}`, 400, `{"error":"transaction category must not be empty"}`},
 		{"empty date", `{"amount":10,"category":"Food"}`, 400, `{"error":"transaction date must not be empty"}`},
 		{"multiple objects", `{"amount":10} {}`, 400, `{"error":"body must contain a single JSON object"}`},
 		{"trailing garbage", `{"amount":10} garbage`, 400, `{"error":"body must contain a single JSON object"}`},
 		{
 			"exact budget limit",
-			fmt.Sprintf(`{"id":999,"amount":100,"category":%q,"description":"Lunch","date":"2026-10"}`, category),
+			fmt.Sprintf(`{"id":999,"amount":100,"category":%q,"description":"Lunch","date":"2026-10-01"}`, category),
 			201,
-			fmt.Sprintf(`{"id":0,"amount":100,"category":%q,"description":"Lunch","date":"2026-10"}`, category),
+			fmt.Sprintf(`{"id":1,"amount":100,"category":%q,"description":"Lunch","date":"2026-10-01"}`, category),
 		},
 		{
 			"budget exceeded",
-			fmt.Sprintf(`{"amount":1,"category":%q,"date":"2026-10"}`, category),
+			fmt.Sprintf(`{"amount":1,"category":%q,"date":"2026-10-01"}`, category),
 			409,
 			`{"error":"budget exceeded"}`,
 		},
@@ -51,11 +51,14 @@ func testCreateTransaction(t *testing.T) {
 				t.Fatal(err)
 			}
 			if tt.status == http.StatusConflict {
-				if err := ledger.AddTransaction(ledger.Transaction{Amount: 100, Category: category, Date: "2026-10"}); err != nil {
+				if err := ledger.AddTransaction(ledger.Transaction{Amount: 100, Category: category, Date: "2026-10-01"}); err != nil {
 					t.Fatal(err)
 				}
 			}
-			before := len(ledger.ListTransactions())
+			before, err := ledger.ListTransactions()
+			if err != nil {
+				t.Fatal(err)
+			}
 			request := httptest.NewRequest(http.MethodPost, "/api/transactions", strings.NewReader(tt.body))
 			response := httptest.NewRecorder()
 			handler.ServeHTTP(response, request)
@@ -72,13 +75,16 @@ func testCreateTransaction(t *testing.T) {
 			}
 			assertJSON(t, body, tt.want)
 
-			stored := ledger.ListTransactions()
+			stored, err := ledger.ListTransactions()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if tt.status == http.StatusCreated {
-				if len(stored) != before+1 {
+				if len(stored) != len(before)+1 {
 					t.Fatal("created transaction was not saved")
 				}
 				assertJSON(t, api.NewTransactionResponse(stored[len(stored)-1]), tt.want)
-			} else if len(stored) != before {
+			} else if len(stored) != len(before) {
 				t.Fatal("rejected request changed stored transactions")
 			}
 		})
@@ -91,7 +97,7 @@ func testConcurrentTransactionsRespectBudget(t *testing.T) {
 	if err := ledger.SetBudget(ledger.Budget{Category: category, Limit: 100}); err != nil {
 		t.Fatal(err)
 	}
-	body := fmt.Sprintf(`{"amount":10,"category":%q,"date":"2026-10"}`, category)
+	body := fmt.Sprintf(`{"amount":10,"category":%q,"date":"2026-10-01"}`, category)
 	statuses := make(chan int, 20)
 	var requests sync.WaitGroup
 	for i := 0; i < 20; i++ {

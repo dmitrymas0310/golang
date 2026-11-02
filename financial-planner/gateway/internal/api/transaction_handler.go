@@ -11,7 +11,12 @@ import (
 )
 
 func listTransactions(w http.ResponseWriter, r *http.Request) {
-	transactions := ledger.ListTransactions()
+	transactions, err := ledger.ListTransactions()
+	if err != nil {
+		log.Printf("failed to list transactions: %v", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
+		return
+	}
 	response := make([]TransactionResponse, 0, len(transactions))
 	for _, tx := range transactions {
 		response = append(response, NewTransactionResponse(tx))
@@ -37,7 +42,8 @@ func createTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := ledger.AddTransaction(tx); err != nil {
+	created, err := ledger.CreateTransaction(tx)
+	if err != nil {
 		if errors.Is(err, ledger.ErrBudgetExceeded) {
 			writeJSON(w, http.StatusConflict, errorResponse{Error: "budget exceeded"})
 			return
@@ -47,5 +53,5 @@ func createTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, NewTransactionResponse(tx))
+	writeJSON(w, http.StatusCreated, NewTransactionResponse(created))
 }

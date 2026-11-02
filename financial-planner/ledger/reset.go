@@ -1,10 +1,20 @@
 package ledger
 
-// Reset очищает хранилище в памяти для изоляции тестовых сценариев.
-func Reset() {
-	stateMu.Lock()
-	defer stateMu.Unlock()
+import (
+	"context"
+	"fmt"
+)
 
-	transactions = make([]Transaction, 0)
-	budgets = make(map[string]Budget)
+// Reset удаляет данные из текущей схемы БД. Предназначен только для тестов.
+func Reset() error {
+	connection, err := database()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), databaseTimeout)
+	defer cancel()
+	if _, err := connection.ExecContext(ctx, `TRUNCATE TABLE expenses, budgets RESTART IDENTITY`); err != nil {
+		return fmt.Errorf("reset test database: %w", err)
+	}
+	return nil
 }

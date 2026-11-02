@@ -12,6 +12,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	routes.HandleFunc("GET /budgets", listBudgets)
 	routes.HandleFunc("POST /budgets", createBudget)
 	routes.HandleFunc("PUT /budgets", notImplemented)
+	routes.HandleFunc("GET /reports/summary", reportSummary)
 
 	mux.Handle("/api/", http.StripPrefix("/api", routes))
 }

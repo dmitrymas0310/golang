@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"ledger"
+	"ledger/testutil"
 
 	"gateway/internal/api"
 )
@@ -18,13 +19,35 @@ func TestHandlers(t *testing.T) {
 	t.Run("transactions", testTransactionHandlers)
 	t.Run("transaction_validation", testCreateTransaction)
 	t.Run("concurrent_transactions", testConcurrentTransactionsRespectBudget)
+	t.Run("database_unavailable", testDatabaseUnavailable)
+	t.Run("reports", testReportHandlers)
 }
 
-// Сценарии с общим Ledger выполняются последовательно: Reset очищает всё хранилище.
+func testDatabaseUnavailable(t *testing.T) {
+	previous := ledger.DB
+	ledger.DB = nil
+	t.Cleanup(func() { ledger.DB = previous })
+	mux := http.NewServeMux()
+	api.RegisterRoutes(mux)
+	handler := api.JSONMiddleware(mux)
+	for _, tt := range []struct{ method, path, body string }{
+		{http.MethodGet, "/api/budgets", ""},
+		{http.MethodGet, "/api/transactions", ""},
+		{http.MethodGet, "/api/reports/summary?from=2025-09-01&to=2025-09-30", ""},
+		{http.MethodPost, "/api/budgets", `{"category":"Food","limit":100}`},
+		{http.MethodPost, "/api/transactions", `{"amount":10,"category":"Food","date":"2026-11-02"}`},
+	} {
+		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
+			assertHTTPJSON(t, handler, tt.method, tt.path, tt.body, http.StatusInternalServerError,
+				`{"error":"internal server error"}`)
+		})
+	}
+}
+
+// Сценарии выполняются последовательно; каждый получает отдельную схему PostgreSQL.
 func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
-	ledger.Reset()
-	t.Cleanup(ledger.Reset)
+	testutil.Database(t)
 
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux)
@@ -71,7 +94,7 @@ func testBudgetHandlers(t *testing.T) {
 
 func testTransactionHandlers(t *testing.T) {
 	const validRequest = `{"amount":60,"category":"Food","description":"Lunch","date":"2026-11-02"}`
-	const createdResponse = `{"id":0,"amount":60,"category":"Food","description":"Lunch","date":"2026-11-02"}`
+	const createdResponse = `{"id":1,"amount":60,"category":"Food","description":"Lunch","date":"2026-11-02"}`
 
 	tests := []struct {
 		name string

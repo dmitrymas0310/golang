@@ -1,13 +1,25 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"gateway/internal/api"
+	"ledger"
 )
 
 func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	err := ledger.InitDB(ctx)
+	cancel()
+	if err != nil {
+		log.Fatalf("Gateway database connection failed: %v", err)
+	}
+	defer ledger.DB.Close()
+	log.Println("Gateway connected to PostgreSQL")
+
 	mux := http.NewServeMux()
 	api.RegisterRoutes(mux)
 

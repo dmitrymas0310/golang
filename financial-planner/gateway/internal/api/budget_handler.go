@@ -10,7 +10,12 @@ import (
 )
 
 func listBudgets(w http.ResponseWriter, r *http.Request) {
-	budgets := ledger.ListBudgets()
+	budgets, err := ledger.ListBudgets()
+	if err != nil {
+		log.Printf("failed to list budgets: %v", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
+		return
+	}
 	response := make([]BudgetResponse, 0, len(budgets))
 	for _, budget := range budgets {
 		response = append(response, NewBudgetResponse(budget))
