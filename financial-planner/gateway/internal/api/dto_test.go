@@ -9,7 +9,15 @@ import (
 	"gateway/internal/api"
 )
 
-func TestTransactionJSONConversion(t *testing.T) {
+func TestDTOConversion(t *testing.T) {
+	t.Parallel()
+	t.Run("transaction", testTransactionJSONConversion)
+	t.Run("budget", testBudgetJSONConversion)
+}
+
+func testTransactionJSONConversion(t *testing.T) {
+	t.Parallel()
+
 	var request api.CreateTransactionRequest
 	if err := json.Unmarshal([]byte(`{"id":999,"amount":125.5,"category":"Food","description":"Lunch","date":"2026-10"}`), &request); err != nil {
 		t.Fatal(err)
@@ -32,7 +40,9 @@ func TestTransactionJSONConversion(t *testing.T) {
 		`{"id":7,"amount":125.5,"category":"Food","description":"Lunch","date":"2026-10"}`)
 }
 
-func TestBudgetJSONConversion(t *testing.T) {
+func testBudgetJSONConversion(t *testing.T) {
+	t.Parallel()
+
 	var request api.CreateBudgetRequest
 	if err := json.Unmarshal([]byte(`{"category":"Food","limit":2000,"period":"2026-10"}`), &request); err != nil {
 		t.Fatal(err)

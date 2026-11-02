@@ -14,13 +14,8 @@ import (
 	"gateway/internal/api"
 )
 
-func TestCreateTransaction(t *testing.T) {
-	category := fmt.Sprintf("%s-%d", t.Name(), len(ledger.ListTransactions()))
-	if err := ledger.SetBudget(ledger.Budget{Category: category, Limit: 100}); err != nil {
-		t.Fatal(err)
-	}
-	mux := http.NewServeMux()
-	api.RegisterRoutes(mux)
+func testCreateTransaction(t *testing.T) {
+	const category = "Food"
 
 	tests := []struct {
 		name   string
@@ -51,10 +46,19 @@ func TestCreateTransaction(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			handler := newTestHandler(t)
+			if err := ledger.SetBudget(ledger.Budget{Category: category, Limit: 100}); err != nil {
+				t.Fatal(err)
+			}
+			if tt.status == http.StatusConflict {
+				if err := ledger.AddTransaction(ledger.Transaction{Amount: 100, Category: category, Date: "2026-10"}); err != nil {
+					t.Fatal(err)
+				}
+			}
 			before := len(ledger.ListTransactions())
 			request := httptest.NewRequest(http.MethodPost, "/api/transactions", strings.NewReader(tt.body))
 			response := httptest.NewRecorder()
-			mux.ServeHTTP(response, request)
+			handler.ServeHTTP(response, request)
 
 			if response.Code != tt.status {
 				t.Fatalf("status = %d, want %d: %s", response.Code, tt.status, response.Body.String())
@@ -81,13 +85,12 @@ func TestCreateTransaction(t *testing.T) {
 	}
 }
 
-func TestConcurrentTransactionsRespectBudget(t *testing.T) {
-	category := fmt.Sprintf("%s-%d", t.Name(), len(ledger.ListTransactions()))
+func testConcurrentTransactionsRespectBudget(t *testing.T) {
+	handler := newTestHandler(t)
+	const category = "Food"
 	if err := ledger.SetBudget(ledger.Budget{Category: category, Limit: 100}); err != nil {
 		t.Fatal(err)
 	}
-	mux := http.NewServeMux()
-	api.RegisterRoutes(mux)
 	body := fmt.Sprintf(`{"amount":10,"category":%q,"date":"2026-10"}`, category)
 	statuses := make(chan int, 20)
 	var requests sync.WaitGroup
@@ -96,7 +99,7 @@ func TestConcurrentTransactionsRespectBudget(t *testing.T) {
 		go func() {
 			defer requests.Done()
 			response := httptest.NewRecorder()
-			mux.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/transactions", strings.NewReader(body)))
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/transactions", strings.NewReader(body)))
 			statuses <- response.Code
 		}()
 	}

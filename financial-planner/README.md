@@ -177,18 +177,35 @@ Ledger нужно запускать именно из каталога `financi
 
 В `gateway/go.mod` настроены зависимость `ledger` и локальная замена `replace ledger => ../ledger`.
 
-## Проверка сборки
+## Тесты и покрытие
 
 Каждый сервис является отдельным Go-модулем, поэтому проверять их нужно отдельно:
 
 ```bash
 cd financial-planner/gateway
-go test ./...
+go test ./... -cover -coverprofile=cover.out
+go tool cover -html=cover.out -o cover.html
+go tool cover -func=cover.out
 ```
 
 ```bash
 cd financial-planner/ledger
-go test ./...
+go test ./... -cover -coverprofile=cover.out
+go tool cover -html=cover.out -o cover.html
+go tool cover -func=cover.out
 ```
 
-Для проверки конкурентных запросов Gateway используйте `go test -race ./...` в его каталоге. Сообщение `[no test files]` относится к пакетам без тестов и подтверждает их успешную компиляцию.
+Каждый блок запускайте из корня репозитория в отдельном терминале. HTML-отчёт `cover.html` создаётся в каталоге соответствующего модуля; его можно открыть браузером. `cover.out` и `cover.html` исключены из Git.
+
+Достигнутое покрытие операторов:
+
+| Область | Покрытие |
+| --- | --- |
+| Ledger, все пакеты модуля | 47,7% |
+| Gateway, все пакеты модуля | 75,8% |
+| Доменный пакет `ledger` | 82,6% |
+| HTTP-пакет `gateway/internal/api` | 90,2% |
+
+Итоги по модулям взяты из `go tool cover -func=cover.out` и учитывают точки входа `main`, покрытые на 0%. Значения по отдельным пакетам выводит `go test`.
+
+Для подробного дерева сценариев запустите `go test -v ./...`, для проверки гонок и изоляции — `go test -race -shuffle=on -count=3 ./...` в каждом модуле. Независимые unit-тесты выполняются параллельно; сценарии с общим Ledger выполняются последовательно и очищают хранилище через `Reset()` и `t.Cleanup()`.

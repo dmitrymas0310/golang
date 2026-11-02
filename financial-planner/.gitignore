@@ -1,0 +1,5 @@
+# Generated Go coverage reports.
+/gateway/cover.out
+/gateway/cover.html
+/ledger/cover.out
+/ledger/cover.html

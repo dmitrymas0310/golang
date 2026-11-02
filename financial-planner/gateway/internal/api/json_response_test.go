@@ -8,7 +8,13 @@ import (
 	"testing"
 )
 
-func TestJSONRoutingResponses(t *testing.T) {
+func TestJSONResponses(t *testing.T) {
+	t.Run("routing", testJSONRoutingResponses)
+	t.Run("panic", testJSONMiddlewareDiscardsPartialResponseOnPanic)
+	t.Run("encoding_failure", testWriteJSONEncodingFailure)
+}
+
+func testJSONRoutingResponses(t *testing.T) {
 	mux := http.NewServeMux()
 	RegisterRoutes(mux)
 	handler := JSONMiddleware(mux)
@@ -57,7 +63,9 @@ func TestJSONRoutingResponses(t *testing.T) {
 	}
 }
 
-func TestJSONMiddlewareDiscardsPartialResponseOnPanic(t *testing.T) {
+func testJSONMiddlewareDiscardsPartialResponseOnPanic(t *testing.T) {
+	t.Parallel()
+
 	handler := JSONMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte("partial response"))
@@ -68,7 +76,9 @@ func TestJSONMiddlewareDiscardsPartialResponseOnPanic(t *testing.T) {
 	assertInternalError(t, response)
 }
 
-func TestWriteJSONEncodingFailure(t *testing.T) {
+func testWriteJSONEncodingFailure(t *testing.T) {
+	t.Parallel()
+
 	response := httptest.NewRecorder()
 	writeJSON(response, http.StatusOK, make(chan int))
 	assertInternalError(t, response)

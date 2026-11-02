@@ -81,19 +81,38 @@ curl -i -X POST http://localhost:8080/api/transactions \
 
 Данные хранятся в памяти и теряются после остановки Gateway. Gateway стартует с пустым хранилищем. Файл бюджетов загружает только отдельная команда Ledger, её память не разделяется с Gateway.
 
-## Проверка
+## Тесты и покрытие
 
 Из корня репозитория проверьте каждый модуль отдельно:
 
 ```bash
 cd financial-planner/gateway
-go test -race ./...
+go test ./... -cover -coverprofile=cover.out
+go tool cover -html=cover.out -o cover.html
+go tool cover -func=cover.out
 ```
 
 ```bash
 cd financial-planner/ledger
-go test ./...
+go test ./... -cover -coverprofile=cover.out
+go tool cover -html=cover.out -o cover.html
+go tool cover -func=cover.out
 ```
+
+Каждый блок запускайте из корня репозитория в отдельном терминале. В каталоге модуля создаются `cover.out` и `cover.html`; HTML-отчёт можно открыть браузером. Эти файлы исключены из Git.
+
+Покрытие тестами (операторов):
+
+| Область | Покрытие |
+| --- | --- |
+| Ledger, все пакеты модуля | 47,7% |
+| Gateway, все пакеты модуля | 75,8% |
+| Доменный пакет `ledger` | 82,6% |
+| HTTP-пакет `gateway/internal/api` | 90,2% |
+
+Итоги модулей соответствуют строке `total` из `go tool cover -func=cover.out` и включают точки входа `main` с покрытием 0%. Значения отдельных пакетов выводит `go test`.
+
+`go test -v ./...` показывает сгруппированные подслучаи. `go test -race -shuffle=on -count=3 ./...` в каждом модуле проверяет гонки и повторяемость сценариев. Независимые unit-подтесты используют `t.Parallel()`, тесты с общим хранилищем выполняются последовательно с `ledger.Reset()` перед сценарием и в `t.Cleanup()`.
 
 Запуск демонстрационной команды Ledger из каталога `financial-planner/ledger`:
 
