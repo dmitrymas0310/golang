@@ -48,6 +48,21 @@ func main() {
 		Date:        "2026-10",
 	}
 
+	// Проверяем разные типы через один интерфейс: корректные и ошибочные данные.
+	validationExamples := []Validatable{
+		trans_1,
+		Budget{Category: "Food", Limit: 2000, Period: "2026-10"},
+		Transaction{Amount: -10, Category: "Food", Date: "2026-10"},
+		Budget{Category: "Food", Limit: 0},
+	}
+	for _, example := range validationExamples {
+		if err := CheckValid(example); err != nil {
+			fmt.Printf("%T validation failed: %v\n", example, err)
+			continue
+		}
+		fmt.Printf("%T validation passed\n", example)
+	}
+
 	if err := AddTransaction(trans_1); err != nil {
 		fmt.Println("Error adding transaction:", err)
 	}

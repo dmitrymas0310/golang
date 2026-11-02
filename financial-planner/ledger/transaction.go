@@ -1,6 +1,9 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 type Transaction struct {
 	ID          int
@@ -12,9 +15,25 @@ type Transaction struct {
 
 var transactions = make([]Transaction, 0)
 
-func AddTransaction(tx Transaction) error {
+func (tx Transaction) Validate() error {
 	if tx.Amount <= 0 {
 		return errors.New("transaction amount must be greater than zero")
+	}
+
+	if strings.TrimSpace(tx.Category) == "" {
+		return errors.New("transaction category must not be empty")
+	}
+
+	if strings.TrimSpace(tx.Date) == "" {
+		return errors.New("transaction date must not be empty")
+	}
+
+	return nil
+}
+
+func AddTransaction(tx Transaction) error {
+	if err := tx.Validate(); err != nil {
+		return err
 	}
 
 	budget, exists := budgets[tx.Category]
